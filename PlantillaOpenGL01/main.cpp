@@ -9,18 +9,33 @@ using namespace std;
 #define DEF_floorGridXSteps	10.0f
 #define DEF_floorGridZSteps	10.0f
 
-// Vectores de movimiento de la pelota
-GLfloat veloHori = 0.0, veloVert = -4.0;
-GLfloat despBase = 0.0, amplitudBase = 3.0;
+/////////////////// Marco
+GLfloat anchoMundo = 14;
+GLfloat altoMundo = 18;
+// Cantidad de bloques 
 
+int nbloquesV = 5;
+int nbloquesH = 7;
+
+// Colores
+float morado[3] = {0.3,0,0.3};
+float amarillo[3] = {0.6,0.6,0.0};
+
+// Pelota
+float tamPelota = 0.3;
+GLfloat xpelota = 0;
+
+// Alto y ancho de la base
+GLfloat width = 1.0;
+
+// Vectores de movimiento de la pelota
+GLfloat veloHori;
+GLfloat veloVert;
+GLfloat despBase = 0.0, anchoBase = 3, altoBase = 0.5;
 GLfloat posxInicial = -7.5, posyInicial = 8.0;
 bool cambioVertical = false;
-bool cambioHorizontal = true;
-bool visto = false;
-
-// Posicion de los bloques
-GLfloat posBloquesy[6];
-GLfloat posBloquesx[6];
+bool cambioHorizontal = false;
+bool inicio = FALSE;
 
 
 void ejesCoordenada(float w) {
@@ -62,203 +77,212 @@ void ejesCoordenada(float w) {
 
 	glLineWidth(1.0);
 }
+class Base {
+public:
+	GLfloat ancho;
+	GLfloat alto;
+	GLfloat xcord;
+	GLfloat ycord;
 
-void dibujarGrid() {
-	GLfloat zExtent, xExtent, xLocal, zLocal;
-	int loopX, loopZ;
+	Base(GLfloat anch, GLfloat alt) {
+		ancho = anch;
+		alto = alt;
+	};
 
-	/* Render Grid */
-	glPushMatrix();
-	glColor3f(0.0f, 0.7f, 0.7f);
-	glBegin(GL_LINES);
-	zExtent = DEF_floorGridScale * DEF_floorGridZSteps;
-	for (loopX = -DEF_floorGridXSteps; loopX <= DEF_floorGridXSteps; loopX++)
-	{
-		xLocal = DEF_floorGridScale * loopX;
-		glVertex3f(xLocal, -zExtent, 0.0f);
-		glVertex3f(xLocal, zExtent, 0.0f);
-	}
-	xExtent = DEF_floorGridScale * DEF_floorGridXSteps;
-	for (loopZ = -DEF_floorGridZSteps; loopZ <= DEF_floorGridZSteps; loopZ++)
-	{
-		zLocal = DEF_floorGridScale * loopZ;
-		glVertex3f(-xExtent, zLocal, 0.0f);
-		glVertex3f(xExtent, zLocal, 0.0f);
-	}
-	glEnd();
-	glPopMatrix();
-}
+	Base() {};
 
-void drawFilledCircle(GLfloat x, GLfloat y, GLfloat radius) {
-	int i;
-	int triangleAmount = 20; //# of triangles used to draw circle
+	void dibuja(GLfloat y) {
+		// Crea una base sobre el origen. Centrada sobre el eje x y por encima.
+		GLfloat amplitud = ancho / 2;
+		glPushMatrix();
+			glTranslatef(despBase, y, 0.0);
+			xcord = despBase;
+			ycord = y;
+			glBegin(GL_POLYGON);
+				glColor3f(0, 0, 1);
+				glVertex2f(amplitud, 0.0);
+				glVertex2f(amplitud, alto);
+				glVertex2f(-amplitud, alto);
+				glVertex2f(-amplitud, 0.0);
+			glEnd();
+		glPopMatrix();
+	};
 
-							 //GLfloat radius = 0.8f; //radius
-	GLfloat twicePi = 2.0f * 3.1415;
+	float* posicion(){
+		float centro[2];
+		centro[0] = xcord;
+		centro[1] = ycord;
+		printf("(%f','%f)\n", xcord, ycord);
+		return centro;
+	};
+};
+class Pelota {
+public:
+	GLfloat radio;
+	GLfloat xcord;
+	GLfloat ycord;
 
-	glBegin(GL_TRIANGLE_FAN);
-	glVertex2f(x, y); // center of circle
-	for (i = 0; i <= triangleAmount; i++) {
-		glVertex2f(
-			x + (radius * cos(i *  twicePi / triangleAmount)),
-			y + (radius * sin(i * twicePi / triangleAmount))
-			);
-	}
-	glEnd();
-}
+	Pelota(GLfloat r, float x, float y) {
+		radio = r;
+		xcord = x;
+		ycord = y;
+	};
+
+	Pelota() {};
+
+	void dibuja(GLfloat x, GLfloat y) {
+		int i;
+		int triangleAmount = 20;
+		GLfloat twicePi = 2.0f * 3.1415;
+
+
+		glPushMatrix();
+			glBegin(GL_TRIANGLE_FAN);
+			glColor3f(1,0,0);
+			glVertex2f(x, y); // Centro del circulo
+			for (i = 0; i <= triangleAmount; i++) {
+				glVertex2f(
+					x + (radio * cos(i *  twicePi / triangleAmount)),
+					y + (radio * sin(i * twicePi / triangleAmount))
+					);
+			}
+			glEnd();
+		glPopMatrix();
+	};
+
+};
 
 
 void changeViewport(int w, int h) {
-	glViewport(0,0,w,h);
+	glViewport(0,0,w,h); // Cambia el aspecto de la pantalla.
+	// Matriz de proyeccion.
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();			// Identidad
 	glOrtho(-10.5, 10.0, -10.0, 10.5, -1.0, 1.0);
-	//float aspectratio = (float)w / (float)h;
+};
 
-	/*if (w <= h)
-		glViewport(0.0, 0.0, w/aspectratio,h/aspectratio);
-	else
-		glViewport(0.0, 0.0, aspectratio*w, aspectratio*h);*/
+class Bloque {
+public:
+	float* color;
+	GLfloat ancho;
+	GLfloat alto;
+	int cantGolpes;
+	GLfloat radioExplo;
+	float xcord;
+	float ycord;
 
-}
+	Bloque(float* c, GLfloat anch, GLfloat alt, int golpes, GLfloat explo, float x, float y) {
+		color = c;
+		ancho = anch;
+		alto = alt;
+		cantGolpes = golpes;
+		radioExplo = explo;
+		xcord = x;
+		ycord = y;
+	};
+	Bloque() {};
 
-void dibujarBase(GLfloat tam) {
-	// Crea una base sobre el origen. Centrada sobre el eje x y por encima.
-	GLfloat amplitud = tam / 2;
-	glBegin(GL_POLYGON);
-		glColor3f(0.0, 0.0, 1.0);
-		glVertex2f(amplitud, 0.0);
-		glVertex2f(amplitud, 0.5);
-		glVertex2f(-amplitud, 0.5);
-		glVertex2f(-amplitud, 0.0);
-	glEnd();
-}
+	void dibuja(GLfloat x, GLfloat y) {
+		glPushMatrix();
+			
+			glTranslatef(x,y,0);
+			glBegin(GL_POINTS);
+				glColor3f(color[0], color[1], color[2]);
+				glVertex2f(0.0, 0.0);
+			glEnd();
+			glBegin(GL_LINE_LOOP);
+				glColor3f(color[0], color[1], color[2]);
+				glVertex2f(ancho, 0.0);
+				glVertex2f(ancho, -alto);
+				glVertex2f(0.0, -alto);
+				glVertex2f(0.0, 0.0);
+			glEnd();
+		glPopMatrix();
+	};
+};
+
+Bloque bosque[7][5]; // Almacena la posicion de todos los bloques
+
+void dibujaMundo(GLfloat ancho, GLfloat alto, float* color) {
+	ejesCoordenada(3.0);
+	glPushMatrix();
+		glBegin(GL_LINE_LOOP);
+			// Marco interior
+			glColor3f(color[0], color[1], color[2]);
+			glVertex2f(-ancho/2, -alto/2);
+			glVertex2f(-ancho/2, alto/2);
+			glVertex2f(ancho/2, alto/2);
+			glVertex2f(ancho/2, -alto/2);
+
+			// Marco exterior
+			glColor3f(color[0], color[1], color[2]);
+			glVertex2f(-ancho/2-1, -alto/2-1);
+			glVertex2f(-ancho/2-1, alto/2+1);
+			glVertex2f(ancho/2+1, alto/2+1);
+			glVertex2f(ancho/2+1, -alto/2-1);
+		glEnd();
+
+		// Se pintan los bloques
+		GLfloat x = -anchoMundo/2+2 ;
+		GLfloat y = altoMundo/2-1 ;
+
+		float separacionH = .5;
+		float separacionV = 1;
+
+		for (int i = 0; i < nbloquesV; i++) {
+			for (int j = 0; j < nbloquesH; j++) {
+				Bloque bloque(morado,1.0,.5,0.0,0.0,x,y);
+				bosque[i][j] = bloque;
+				bloque.dibuja(x,y);
+				x += bloque.ancho + separacionH;
+			};
+			x = -anchoMundo/2+2;
+			y -= separacionV + bosque[0][0].alto;
+		};
+	glPopMatrix();
+
+	// Dibuja base.
+	Base base(anchoBase,altoBase);
+	base.dibuja(-9.0);
+	// Dibuja Pelota
+
+	if (inicio == false) {
+		veloHori = base.posicion()[0];
+		veloVert = -8;
+	}
+
+	Pelota p(tamPelota,0.0, 0.0);
+	p.dibuja(veloHori, veloVert);
+};
 
 
 void render(){
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 	glMatrixMode(GL_MODELVIEW);
-
-	glPushMatrix();
-		ejesCoordenada(3.0);
-		//glLineWidth(3.0);
-		glTranslatef(-7.5, 8.0, 0.0);
-		for (size_t i = 0; i < 6; i++)
-		{
-			for (size_t j = 0; j < 6; j++)
-			{
-				//ejesCoordenada(1.0);
-				// Almacenar la posiciones de cada bloque que se dibuje
-
-				glPointSize(5.0);
-				glBegin(GL_POINTS);
-					glVertex2f(0.0, 0.0);
-				glEnd();
-				glBegin(GL_LINE_LOOP);
-					glColor3f(0.3, 0.0, 0.3);
-					glVertex2f(1.0, -0.25);
-					glVertex2f(1.0, 0.25);
-					glVertex2f(-1.0, 0.25);
-					glVertex2f(-1.0, -0.25);
-				glEnd();
-				glTranslatef(3.0, 0.0, 0.0);
-			}
-			glTranslatef(-18.0, -1.0, 0.0);
-
-		}
-		
-	glPopMatrix();
-
-	// glOrtho(-10.0, 10.0, -10.0, 10.0, -1.0, 1.0);
-	// Crear marco del juego
-	glPushMatrix();
-		glBegin(GL_LINE_LOOP);
-			// Marco interior
-			glColor3f(0.6, 0.6, 0.0);
-			glVertex2f(-9.0, -9.0);
-			glVertex2f(-9.0, 9.0);
-			glVertex2f(9.0, 9.0);
-			glVertex2f(9.0, -9.0);
-
-			// Marco exterior
-			glVertex2f(10.0, -9.0);
-			glVertex2f(10.0, 10.0);
-			glVertex2f(-10.0, 10.0);
-			glVertex2f(-10.0, -9.0);
-		glEnd();
-	glPopMatrix();
-
-
-	// Pelota
-	glPushMatrix();
-		glTranslatef(veloHori, veloVert, 0.0);
-		drawFilledCircle(0.0, 0.0, .25);
-	glPopMatrix();
-
-	// Dibujar base.
-	glPushMatrix();
-		glTranslatef(despBase, -9.0, 0.0);
-		dibujarBase(amplitudBase);
-	glPopMatrix();
-
+	dibujaMundo(anchoMundo,altoMundo,amarillo);
 	glutSwapBuffers();
-}
-
-
-
-void accion(unsigned char tecla, int x, int y) {
-
-	/* Configurar los limites del espacio del juego */
-	// Desplazamiento de la base
-
-
-	switch (tecla) {
-		case 'a':
-			if (despBase > -7.5) despBase -= .2;
-			break;
-		case 's':
-			// Limite: MarcoInterior - tamBase/2. Configurar como macro
-			if (despBase < 7.5) despBase += .2;
-			break;
-		// Desplazamiento de pelota (Prueba)
-		case 'j':
-			veloHori -= 0.1;
-			break;
-		case 'l':
-			veloHori += 0.1;
-			break;
-		case 'i':
-			veloVert += 0.1;
-			break;
-		case 'k':
-			veloVert -= 0.1;
-			break;
-	}
-	//printf("Desp de la base %f\n", despBase);
-
-	render();
-
-}
+};
 
 void colision_base() {
-	if ((-8.5 >= veloVert - .25) && (-8.5 <= veloVert)) {
-		if (((despBase + (amplitudBase / 2)) >= veloHori - .25) && ((despBase + (amplitudBase / 2)) <= veloHori)) {
+	if ((-8.5 >= veloVert - tamPelota) && (-8.5 <= veloVert)) {
+		// Colisiones de esquina
+		if (((despBase + (anchoBase / 2)) >= veloHori - tamPelota) && ((despBase + (anchoBase/ 2)) <= veloHori)) {
 			// Ejecutar el cambio de direccion
 			printf("Golpeo en la esquina de la base\n");
 			cambioHorizontal = true;
 			cambioVertical = true;
 		}
-		if (((despBase - (amplitudBase / 2)) <= veloHori + .25) && ((despBase - (amplitudBase / 2)) >= veloHori)) {
-			// Ejecutar el cambio de direccion
+		if (((despBase - (anchoBase / 2)) <= veloHori + tamPelota) && ((despBase - (anchoBase/ 2)) >= veloHori)) {
+			
 			printf("Golpeo en la esquina de la base\n");
 			cambioHorizontal = false;
 			cambioVertical = true;
 		}
 	}
 
-
-	if (((despBase + (amplitudBase / 2)) >= veloHori) && ((despBase - (amplitudBase / 2)) <= veloHori)) {
-		if (-8.5 >= veloVert - .25) {
-			// Ejecutar el cambio de direccion
+	// Colisiones vertical
+	if (((despBase + (anchoBase / 2)) >= veloHori) && ((despBase - (anchoBase / 2)) <= veloHori)) {
+		if (-8.5 >= veloVert - tamPelota) {
 			printf("Golpeo en la base\n");
 			cambioVertical = false;
 		}
@@ -269,53 +293,54 @@ void colision_base() {
 void colisionBloques() {
 	// posicion central de cada bloque + distancia al borde + radio de la pelota
 	
-	for (size_t i = 0; i < 6; i++) {
-		// Colision general
-		for (size_t j = 0; j < 6; j++) {
-			if (((posBloquesy[i] + 0.25) >= veloVert) && (veloVert >= (posBloquesy[i] - .25))) {
-				if ((veloHori + .25 >= (posBloquesx[j] - 1.0)) && ((posBloquesx[j] + 1.0) >= veloHori - .25)) {
-					printf("Colision con bloque lado horizontal (%f,%f)\n", posBloquesx[j], posBloquesy[i]);
+	for (size_t i = 0; i < nbloquesV; i++) {
+		
+		for (size_t j = 0; j < nbloquesH ; j++) {
+			// Colision horizontales
+			if (((bosque[i][j].ycord + bosque[i][j].alto) >= veloVert) && (veloVert >= (bosque[i][j].ycord - bosque[i][j].alto))) {
+				if ((veloHori + tamPelota >= (bosque[i][j].xcord - bosque[i][j].ancho)) 
+						&& ((bosque[i][j].xcord + bosque[i][j].ancho) >= veloHori - tamPelota)) {
+					printf("Colision con bloque lado horizontal (%f,%f)\n", bosque[i][j].xcord, bosque[i][j].ycord);
 					// Rebote entre bloques
 					cambioHorizontal = true;
 				}
-				
 			}
 
 			// Colisiones verticales
-			if ((veloHori >= (posBloquesx[j] - 1.0)) && ((posBloquesx[j] + 1.0) >= veloHori)) {
-				if (((posBloquesy[i] + 0.25) >= veloVert - .25) && (veloVert + .25 >= (posBloquesy[i] - .25))) {
-					printf("Colision con bloque lado vertical (%f,%f)\n", posBloquesx[j], posBloquesy[i]);
+			if ((veloHori >= (bosque[i][j].xcord - bosque[i][j].ancho)) && ((bosque[i][j].xcord + bosque[i][j].ancho) >= veloHori)) {
+				if (((bosque[i][j].ycord + bosque[i][j].alto) >= veloVert - tamPelota)
+					&& (veloVert + tamPelota >= (bosque[i][j].ycord - bosque[i][j].alto))) {
+					printf("Colision con bloque lado vertical (%f,%f)\n", bosque[i][j].xcord, bosque[i][j].ycord);
 					cambioVertical = true;
 				}
 			}
 			// Prueba de esquinas inferiores
-			if (((posBloquesy[i] - .25) <= veloVert + .25) && ((posBloquesy[i] - .25) >= veloVert)) {
-				if ((veloHori - .25 <= (posBloquesx[j] + 1.0)) && (veloHori >= (posBloquesx[j] + 1.0))) {
-					printf("Colision en esquina der,inf con bloque (%f,%f)\n", posBloquesx[j], posBloquesy[i]);
+			if (((bosque[i][j].ycord- bosque[i][j].alto) <= veloVert + tamPelota) && ((bosque[i][j].ycord - bosque[i][j].alto) >= veloVert)) {
+				if ((veloHori - tamPelota <= (bosque[i][j].xcord + bosque[i][j].ancho)) && (veloHori >= (bosque[i][j].xcord + bosque[i][j].ancho))) {
+					printf("Colision en esquina der,inf con bloque (%f,%f)\n", bosque[i][j].xcord, bosque[i][j].ycord);
 					cambioVertical = true;
 					cambioHorizontal = true;
 				}
-				if ((veloHori + .25 >= (posBloquesx[j] - 1.0)) && (veloHori <= (posBloquesx[j] - 1.0))) {
-					printf("Colision esquina izq,inf con bloque (%f,%f)\n", posBloquesx[j], posBloquesy[i]);
+				if ((veloHori + tamPelota >= (bosque[i][j].xcord - bosque[i][j].ancho)) && (veloHori <= (bosque[i][j].xcord - bosque[i][j].ancho))) {
+					printf("Colision esquina izq,inf con bloque (%f,%f)\n", bosque[i][j].xcord, bosque[i][j].ycord);
 					cambioVertical = true;
 					cambioHorizontal = false;
 				}
 			}
 
 			// Prueba de esquinas superiores
-			if (((posBloquesy[i] + .25) >= veloVert - .25) && ((posBloquesy[i] + .25) <= veloVert)) {
-				if ((veloHori - .25 <= (posBloquesx[j] + 1.0)) && (veloHori >= (posBloquesx[j] + 1.0))) {
-					printf("Colision en esquina der,sup con bloque (%f,%f)\n", posBloquesx[j], posBloquesy[i]);
+			if (((bosque[i][j].ycord + bosque[i][j].alto) >= veloVert - tamPelota) && ((bosque[i][j].ycord + bosque[i][j].alto) <= veloVert)) {
+				if ((veloHori - tamPelota <= (bosque[i][j].xcord + bosque[i][j].ancho)) && (veloHori >= (bosque[i][j].xcord + bosque[i][j].ancho))) {
+					printf("Colision en esquina der,sup con bloque (%f,%f)\n", bosque[i][j].xcord, bosque[i][j].ycord);
 					cambioVertical = false;
 					cambioHorizontal = true;
 				}
-				if ((veloHori + .25 >= (posBloquesx[j] - 1.0)) && (veloHori <= (posBloquesx[j] - 1.0))) {
-					printf("Colision esquina izq,sup con bloque (%f,%f)\n", posBloquesx[j], posBloquesy[i]);
+				if ((veloHori + tamPelota >= (bosque[i][j].xcord - bosque[i][j].ancho)) && (veloHori <= (bosque[i][j].xcord - bosque[i][j].ancho))) {
+					printf("Colision esquina izq,sup con bloque (%f,%f)\n", bosque[i][j].xcord, bosque[i][j].ycord);
 					cambioVertical = false;
 					cambioHorizontal = false;
 				}
 			}
-			// Esquinas superiores
 		}
 	}
 }
@@ -337,25 +362,63 @@ void moverPelota() {
 		veloHori -= 0.005;
 
 	// Limites del juego
-	if (veloVert >= 8.75)
-		cambioVertical = true;
-
+	if (veloVert >= altoMundo / 2 - tamPelota)
+		 cambioVertical = true;
+	
 	// Condicion: La pelota no cae en la base
-	if (veloVert <= -9.75) {
+	if (veloVert <= -(altoMundo / 2 - tamPelota)) {
 		printf("Perdiste\n");
 		cambioVertical = false;
 	}
 
-	if (veloHori >= 8.75)
+	if (veloHori >= anchoMundo / 2 - tamPelota)
 		cambioHorizontal = true;
-
-	if (veloHori <= -8.75)
+	if (veloHori <= -(anchoMundo / 2 - tamPelota)) {
 		cambioHorizontal = false;
+		
+	}
 
 	colisionBloques();
 	colision_base();
 	//printf("Pelota (%f,%f)\n", veloHori, veloVert);
 	render();
+
+}
+
+
+void accion(unsigned char tecla, int x, int y) {
+
+	/* Configurar los limites del espacio del juego */
+	// Desplazamiento de la base
+
+
+	switch (tecla) {
+	case 'a':
+		if (despBase > -anchoMundo / 2 + 1.5) despBase -= .5;
+		break;
+	case 's':
+		// Limite: MarcoInterior - tamBase/2. Configurar como macro
+		if (despBase < anchoMundo / 2 - 1.5) despBase += .5;
+		break;
+	case 'p':
+		inicio = true;
+		break;
+		// Desplazamiento de pelota (Prueba)
+	case 'j':
+		veloHori -= 0.1;
+		break;
+	case 'l':
+		veloHori += 0.1;
+		break;
+	case 'i':
+		veloVert += 0.1;
+		break;
+	case 'k':
+		veloVert -= 0.1;
+		break;
+	}
+	render();
+
 }
 
 
@@ -374,21 +437,11 @@ int main (int argc, char** argv) {
 	glutKeyboardFunc(accion);
 	glutIdleFunc(moverPelota);
 
-	// Posiciones del centro de los bloques 
-	for (size_t i = 0; i < 6; i++)
-	{
-		posBloquesx[i] = posxInicial + i*3.0;
-		posBloquesy[i] = posyInicial - i*1.0;
-
-	}
-
-
 	GLenum err = glewInit();
 	if (GLEW_OK != err) {
 		fprintf(stderr, "GLEW error");
 		return 1;
 	}
-
 
 	glutMainLoop();
 	return 0;
