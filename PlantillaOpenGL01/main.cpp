@@ -10,15 +10,21 @@ using namespace std;
 #define DEF_floorGridZSteps	10.0f
 
 // Vectores de movimiento de la pelota
-GLfloat veloHori = 0.0, veloVert = 5.0;
-GLfloat veloHoriPasada = 0.0, veloVertPasada = 0.0;
+GLfloat veloHori = 0.0, veloVert = -4.0;
 GLfloat despBase = 0.0, amplitudBase = 3.0;
+
+GLfloat posxInicial = -7.5, posyInicial = 8.0;
 bool cambioVertical = false;
-bool cambioHorizontal = false;
+bool cambioHorizontal = true;
+bool visto = false;
+
+// Posicion de los bloques
+GLfloat posBloquesy[6];
+GLfloat posBloquesx[6];
 
 
 void ejesCoordenada(float w) {
-	
+
 	glLineWidth(w);
 	glBegin(GL_LINES);
 		glColor3f(1.0,0.0,0.0);
@@ -34,8 +40,8 @@ void ejesCoordenada(float w) {
 	glColor3f(0.0,1.0,0.0);
 	glBegin(GL_LINES);
 		for(i = -10; i <=10; i++){
-			if (i!=0) {		
-				if ((i%2)==0){	
+			if (i!=0) {
+				if ((i%2)==0){
 					glVertex2f(i,0.4);
 					glVertex2f(i,-0.4);
 
@@ -51,7 +57,7 @@ void ejesCoordenada(float w) {
 				}
 			}
 		}
-		
+
 	glEnd();
 
 	glLineWidth(1.0);
@@ -111,7 +117,7 @@ void changeViewport(int w, int h) {
 		glViewport(0.0, 0.0, w/aspectratio,h/aspectratio);
 	else
 		glViewport(0.0, 0.0, aspectratio*w, aspectratio*h);*/
-	
+
 }
 
 void dibujarBase(GLfloat tam) {
@@ -133,6 +139,7 @@ void render(){
 	glMatrixMode(GL_MODELVIEW);
 
 	glPushMatrix();
+		ejesCoordenada(3.0);
 		//glLineWidth(3.0);
 		glTranslatef(-7.5, 8.0, 0.0);
 		for (size_t i = 0; i < 6; i++)
@@ -140,17 +147,25 @@ void render(){
 			for (size_t j = 0; j < 6; j++)
 			{
 				//ejesCoordenada(1.0);
+				// Almacenar la posiciones de cada bloque que se dibuje
+
+				glPointSize(5.0);
+				glBegin(GL_POINTS);
+					glVertex2f(0.0, 0.0);
+				glEnd();
 				glBegin(GL_LINE_LOOP);
 					glColor3f(0.3, 0.0, 0.3);
-					glVertex2f(1.0, 0.0);
-					glVertex2f(1.0, 0.5);
-					glVertex2f(-1.0, 0.5);
-					glVertex2f(-1.0, 0.0);
+					glVertex2f(1.0, -0.25);
+					glVertex2f(1.0, 0.25);
+					glVertex2f(-1.0, 0.25);
+					glVertex2f(-1.0, -0.25);
 				glEnd();
 				glTranslatef(3.0, 0.0, 0.0);
 			}
 			glTranslatef(-18.0, -1.0, 0.0);
+
 		}
+		
 	glPopMatrix();
 
 	// glOrtho(-10.0, 10.0, -10.0, 10.0, -1.0, 1.0);
@@ -176,18 +191,12 @@ void render(){
 	// Pelota
 	glPushMatrix();
 		glTranslatef(veloHori, veloVert, 0.0);
-		// Punto de prueba
-		/*glPointSize(5.0);
-		glBegin(GL_POINTS);
-			glVertex2f(0.0, -8.0);
-		glEnd();*/
 		drawFilledCircle(0.0, 0.0, .25);
 	glPopMatrix();
 
-	// Dibujar base. 
+	// Dibujar base.
 	glPushMatrix();
 		glTranslatef(despBase, -9.0, 0.0);
-		ejesCoordenada(1.0);
 		dibujarBase(amplitudBase);
 	glPopMatrix();
 
@@ -201,14 +210,14 @@ void accion(unsigned char tecla, int x, int y) {
 	/* Configurar los limites del espacio del juego */
 	// Desplazamiento de la base
 
-	
+
 	switch (tecla) {
 		case 'a':
-			if (despBase > -7.5) despBase -= .1;
+			if (despBase > -7.5) despBase -= .2;
 			break;
 		case 's':
 			// Limite: MarcoInterior - tamBase/2. Configurar como macro
-			if (despBase < 7.5) despBase += .1;
+			if (despBase < 7.5) despBase += .2;
 			break;
 		// Desplazamiento de pelota (Prueba)
 		case 'j':
@@ -231,36 +240,101 @@ void accion(unsigned char tecla, int x, int y) {
 }
 
 void colision_base() {
-
-	if ((despBase + (amplitudBase / 2) <= veloHori) && (despBase - (amplitudBase / 2) >= veloHori)) {
-		printf("Esta en la base");
-		if (-8.25 >= veloVert) {
-			// Ejecutar el cambio de direccion 
-			printf("Golpeo en la base");
-			cambioVertical = false;
+	if ((-8.5 >= veloVert - .25) && (-8.5 <= veloVert)) {
+		if (((despBase + (amplitudBase / 2)) >= veloHori - .25) && ((despBase + (amplitudBase / 2)) <= veloHori)) {
+			// Ejecutar el cambio de direccion
+			printf("Golpeo en la esquina de la base\n");
+			cambioHorizontal = true;
+			cambioVertical = true;
+		}
+		if (((despBase - (amplitudBase / 2)) <= veloHori + .25) && ((despBase - (amplitudBase / 2)) >= veloHori)) {
+			// Ejecutar el cambio de direccion
+			printf("Golpeo en la esquina de la base\n");
+			cambioHorizontal = false;
+			cambioVertical = true;
 		}
 	}
 
+
+	if (((despBase + (amplitudBase / 2)) >= veloHori) && ((despBase - (amplitudBase / 2)) <= veloHori)) {
+		if (-8.5 >= veloVert - .25) {
+			// Ejecutar el cambio de direccion
+			printf("Golpeo en la base\n");
+			cambioVertical = false;
+		}
+	}
+}
+
+
+void colisionBloques() {
+	// posicion central de cada bloque + distancia al borde + radio de la pelota
+	
+	for (size_t i = 0; i < 6; i++) {
+		// Colision general
+		for (size_t j = 0; j < 6; j++) {
+			if (((posBloquesy[i] + 0.25) >= veloVert) && (veloVert >= (posBloquesy[i] - .25))) {
+				if ((veloHori + .25 >= (posBloquesx[j] - 1.0)) && ((posBloquesx[j] + 1.0) >= veloHori - .25)) {
+					printf("Colision con bloque lado horizontal (%f,%f)\n", posBloquesx[j], posBloquesy[i]);
+					// Rebote entre bloques
+					cambioHorizontal = true;
+				}
+				
+			}
+
+			// Colisiones verticales
+			if ((veloHori >= (posBloquesx[j] - 1.0)) && ((posBloquesx[j] + 1.0) >= veloHori)) {
+				if (((posBloquesy[i] + 0.25) >= veloVert - .25) && (veloVert + .25 >= (posBloquesy[i] - .25))) {
+					printf("Colision con bloque lado vertical (%f,%f)\n", posBloquesx[j], posBloquesy[i]);
+					cambioVertical = true;
+				}
+			}
+			// Prueba de esquinas inferiores
+			if (((posBloquesy[i] - .25) <= veloVert + .25) && ((posBloquesy[i] - .25) >= veloVert)) {
+				if ((veloHori - .25 <= (posBloquesx[j] + 1.0)) && (veloHori >= (posBloquesx[j] + 1.0))) {
+					printf("Colision en esquina der,inf con bloque (%f,%f)\n", posBloquesx[j], posBloquesy[i]);
+					cambioVertical = true;
+					cambioHorizontal = true;
+				}
+				if ((veloHori + .25 >= (posBloquesx[j] - 1.0)) && (veloHori <= (posBloquesx[j] - 1.0))) {
+					printf("Colision esquina izq,inf con bloque (%f,%f)\n", posBloquesx[j], posBloquesy[i]);
+					cambioVertical = true;
+					cambioHorizontal = false;
+				}
+			}
+
+			// Prueba de esquinas superiores
+			if (((posBloquesy[i] + .25) >= veloVert - .25) && ((posBloquesy[i] + .25) <= veloVert)) {
+				if ((veloHori - .25 <= (posBloquesx[j] + 1.0)) && (veloHori >= (posBloquesx[j] + 1.0))) {
+					printf("Colision en esquina der,sup con bloque (%f,%f)\n", posBloquesx[j], posBloquesy[i]);
+					cambioVertical = false;
+					cambioHorizontal = true;
+				}
+				if ((veloHori + .25 >= (posBloquesx[j] - 1.0)) && (veloHori <= (posBloquesx[j] - 1.0))) {
+					printf("Colision esquina izq,sup con bloque (%f,%f)\n", posBloquesx[j], posBloquesy[i]);
+					cambioVertical = false;
+					cambioHorizontal = false;
+				}
+			}
+			// Esquinas superiores
+		}
+	}
 }
 
 void moverPelota() {
-	
-	veloVertPasada = veloVert;
-	veloHoriPasada = veloHori;
-	GLfloat pendiente = 0;
 	// Modelar un comportamiento predeterminado
 	if (!cambioVertical)
-		veloVert += 0.005;	
+		//veloVert += 0.1;
+		veloVert += 0.005;
 	else
+		//veloVert -= 0.1;
 		veloVert -= 0.005;
 
 	if (!cambioHorizontal)
 		veloHori += 0.005;
+		//veloHori += 0.1;
 	else
+	//	veloHori -= 0.1;
 		veloHori -= 0.005;
-
-	if ((veloHori - veloHoriPasada) > 0)
-		pendiente = (veloVert - veloVertPasada) / (veloHori - veloHoriPasada);
 
 	// Limites del juego
 	if (veloVert >= 8.75)
@@ -274,29 +348,12 @@ void moverPelota() {
 
 	if (veloHori >= 8.75)
 		cambioHorizontal = true;
-	if (veloHori <= -8.75) {
+
+	if (veloHori <= -8.75)
 		cambioHorizontal = false;
-	}
-	
 
-
-	// Colision con la base
-	if (( (despBase + (amplitudBase / 2)) >= veloHori)  && ( (despBase - (amplitudBase / 2)) <= veloHori)) {
-		//printf("Esta en la base\n");
-		if (-8.25 >= veloVert) {
-			// Ejecutar el cambio de direccion 
-			printf("Golpeo en la base\n");
-			cambioVertical = false;
-			if (pendiente > 0)
-				cambioHorizontal = false;
-
-			if (pendiente < 0)
-				cambioHorizontal = true;
-		}
-	}
-
-
-	//colision_base();
+	colisionBloques();
+	colision_base();
 	//printf("Pelota (%f,%f)\n", veloHori, veloVert);
 	render();
 }
@@ -317,13 +374,21 @@ int main (int argc, char** argv) {
 	glutKeyboardFunc(accion);
 	glutIdleFunc(moverPelota);
 
+	// Posiciones del centro de los bloques 
+	for (size_t i = 0; i < 6; i++)
+	{
+		posBloquesx[i] = posxInicial + i*3.0;
+		posBloquesy[i] = posyInicial - i*1.0;
+
+	}
+
 
 	GLenum err = glewInit();
 	if (GLEW_OK != err) {
 		fprintf(stderr, "GLEW error");
 		return 1;
 	}
-	
+
 
 	glutMainLoop();
 	return 0;
