@@ -32,7 +32,6 @@ GLfloat width = 1.0;
 GLfloat veloHori;
 GLfloat veloVert;
 GLfloat despBase = 0.0, anchoBase = 3, altoBase = 0.5;
-GLfloat posxInicial = -7.5, posyInicial = 8.0;
 bool cambioVertical = false;
 bool cambioHorizontal = false;
 bool inicio = FALSE;
@@ -184,24 +183,28 @@ public:
 
 	void dibuja(GLfloat x, GLfloat y) {
 		glPushMatrix();
-			
-			glTranslatef(x,y,0);
+			glTranslatef(x, y, 0);
+			glColor3f(color[0], color[1], color[2]);
+			glPointSize(4.0);
 			glBegin(GL_POINTS);
-				glColor3f(color[0], color[1], color[2]);
 				glVertex2f(0.0, 0.0);
 			glEnd();
 			glBegin(GL_LINE_LOOP);
-				glColor3f(color[0], color[1], color[2]);
-				glVertex2f(ancho, 0.0);
+				/*glVertex2f(ancho, 0.0);
 				glVertex2f(ancho, -alto);
 				glVertex2f(0.0, -alto);
-				glVertex2f(0.0, 0.0);
+				glVertex2f(0.0, 0.0);*/
+				glVertex2f(ancho, alto);
+				glVertex2f(ancho, -alto);
+				glVertex2f(-ancho, -alto);
+				glVertex2f(-ancho, alto);
+				
 			glEnd();
 		glPopMatrix();
 	};
 };
 
-Bloque bosque[7][5]; // Almacena la posicion de todos los bloques
+Bloque bosque[5][7]; // Almacena la posicion de todos los bloques
 
 void dibujaMundo(GLfloat ancho, GLfloat alto, float* color) {
 	ejesCoordenada(3.0);
@@ -223,20 +226,20 @@ void dibujaMundo(GLfloat ancho, GLfloat alto, float* color) {
 		glEnd();
 
 		// Se pintan los bloques
-		GLfloat x = -anchoMundo/2+2 ;
+		GLfloat x = -anchoMundo/2+2.5;
 		GLfloat y = altoMundo/2-1 ;
 
-		float separacionH = .5;
+		float separacionH = 1.0;
 		float separacionV = 1;
 
 		for (int i = 0; i < nbloquesV; i++) {
 			for (int j = 0; j < nbloquesH; j++) {
-				Bloque bloque(morado,1.0,.5,0.0,0.0,x,y);
+				Bloque bloque(morado,.5,.25,0.0,0.0,x,y);
 				bosque[i][j] = bloque;
 				bloque.dibuja(x,y);
 				x += bloque.ancho + separacionH;
 			};
-			x = -anchoMundo/2+2;
+			x = -anchoMundo/2+2.5;
 			y -= separacionV + bosque[0][0].alto;
 		};
 	glPopMatrix();
@@ -293,9 +296,8 @@ void colision_base() {
 void colisionBloques() {
 	// posicion central de cada bloque + distancia al borde + radio de la pelota
 	
-	for (size_t i = 0; i < nbloquesV; i++) {
-		
-		for (size_t j = 0; j < nbloquesH ; j++) {
+	for (int i = 0; i < nbloquesV; i++) {
+		for (int j = 0; j < nbloquesH ; j++) {
 			// Colision horizontales
 			if (((bosque[i][j].ycord + bosque[i][j].alto) >= veloVert) && (veloVert >= (bosque[i][j].ycord - bosque[i][j].alto))) {
 				if ((veloHori + tamPelota >= (bosque[i][j].xcord - bosque[i][j].ancho)) 
